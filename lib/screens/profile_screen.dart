@@ -6,9 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'my_listings_screen.dart';
-
-// Impor paket peta & halaman pemilih
 import 'package:latlong2/latlong.dart' as latlng;
 import 'location_picker_screen.dart';
 
@@ -30,10 +29,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     cache: false,
   );
 
-  // --- (Fungsi _changeProfilePicture, _showImageSourceDialog, _changePassword, _performLogout) ---
-  // (Dibiarkan sama, asumsikan kodenya sudah disalin dari respons sebelumnya)
+  // SiBersih Color Palette
+  static const Color _primaryEmerald = Color(0xFF10B981);
+  static const Color _darkEmerald = Color(0xFF047857);
+  static const Color _lightEmerald = Color(0xFF34D399);
+  static const Color _tealAccent = Color(0xFF14B8A6);
+  static const Color _ultraLightEmerald = Color(0xFFECFDF5);
+  static const Color _pureWhite = Color(0xFFFFFFFF);
+  static const Color _background = Color(0xFFF8FDFD);
 
-  // Fungsi _changeProfilePicture
   Future<void> _changeProfilePicture() async {
     final source = await _showImageSourceDialog();
     if (source == null) return;
@@ -64,42 +68,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SnackBar(
             content: Text('Foto profil berhasil diperbarui!'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal meng-upload foto: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal meng-upload foto: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       setState(() => _isUploading = false);
     }
   }
 
-  // Fungsi _showImageSourceDialog
   Future<ImageSource?> _showImageSourceDialog() async {
     return showModalBottomSheet<ImageSource>(
       context: context,
+      backgroundColor: _pureWhite,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
       builder: (context) {
         return SafeArea(
-          child: Wrap(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  'Pilih Foto Profil',
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.w600,
+                    color: _darkEmerald,
+                  ),
+                ),
+              ),
               ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Pilih dari Galeri'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: _ultraLightEmerald,
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Icon(Icons.photo_library, color: _primaryEmerald),
+                ),
+                title: Text(
+                  'Pilih dari Galeri',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[800],
+                  ),
+                ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.gallery);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Ambil Foto (Kamera)'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: _ultraLightEmerald,
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Icon(Icons.photo_camera, color: _primaryEmerald),
+                ),
+                title: Text(
+                  'Ambil Foto (Kamera)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[800],
+                  ),
+                ),
                 onTap: () {
                   Navigator.of(context).pop(ImageSource.camera);
                 },
               ),
+              const SizedBox(height: 16.0),
             ],
           ),
         );
@@ -107,7 +158,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Fungsi _changePassword
   Future<void> _changePassword() async {
     final bool? didConfirm = await showDialog<bool>(
       context: context,
@@ -136,6 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SnackBar(
             content: Text('Link ganti password telah dikirim ke email Anda!'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -145,13 +196,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(
             content: Text('Gagal mengirim email: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
   }
 
-  // Fungsi _performLogout
   Future<void> _performLogout() async {
     final bool? didRequestSignOut = await showDialog<bool>(
       context: context,
@@ -180,31 +231,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // --- (FUNGSI DIALOG TPS DIPERBAIKI LOGIKA MAPPINGNYA) ---
   Future<void> _showTpsLocationDialog(Map<String, dynamic> currentData) async {
     final addressController = TextEditingController(
       text: currentData['tpsAddress'],
     );
 
-    // selectedLocation sekarang adalah GeoPoint yang bisa berubah
     GeoPoint? selectedLocation = currentData['tpsLocation'];
-
-    String locationStatus = "Ambil Lokasi GPS Saat Ini";
-    if (selectedLocation != null) {
-      locationStatus =
-          'Lokasi: ${selectedLocation.latitude.toStringAsFixed(4)}, ${selectedLocation.longitude.toStringAsFixed(4)}';
-    }
-
-    StateSetter? dialogSetState;
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         if (mounted)
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Izin lokasi ditolak.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Izin lokasi ditolak.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         return;
       }
     }
@@ -214,7 +258,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
-            dialogSetState = setState;
+            String locationStatus = "Ambil Lokasi GPS Saat Ini";
+            if (selectedLocation != null) {
+              locationStatus =
+                  'Lokasi: ${selectedLocation!.latitude.toStringAsFixed(4)}, ${selectedLocation!.longitude.toStringAsFixed(4)}';
+            }
 
             return AlertDialog(
               title: const Text('Update Info Lokasi TPS'),
@@ -235,25 +283,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     OutlinedButton.icon(
                       onPressed: () async {
-                        dialogSetState!(() {
+                        setState(() {
                           locationStatus = 'Mencari lokasi...';
                         });
                         try {
                           const LocationSettings locationSettings =
                               LocationSettings(accuracy: LocationAccuracy.high);
                           Position position =
-                              await Geolocator.getPositionStream(
-                                locationSettings: locationSettings,
-                              ).first;
+                              await Geolocator.getCurrentPosition(
+                                desiredAccuracy: LocationAccuracy.high,
+                              );
+
                           selectedLocation = GeoPoint(
                             position.latitude,
                             position.longitude,
                           );
-                          dialogSetState!(() {
+                          setState(() {
                             locationStatus = 'Lokasi GPS berhasil diambil!';
                           });
                         } catch (e) {
-                          dialogSetState!(() {
+                          setState(() {
                             locationStatus = 'Gagal! Coba lagi.';
                           });
                         }
@@ -278,10 +327,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               )
                             : const latlng.LatLng(-6.9175, 107.6191);
 
-                        // Tutup dialog
-                        Navigator.pop(dialogContext);
-
-                        // Buka Peta Pemilih
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -291,28 +336,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         );
 
-                        // --- (PERBAIKAN LOGIKA PEMANGGILAN ULANG) ---
-                        // Jika dapat hasil, update state dan panggil dialog lagi
                         if (result != null && result is latlng.LatLng) {
-                          selectedLocation = GeoPoint(
-                            result.latitude,
-                            result.longitude,
-                          );
+                          setState(() {
+                            selectedLocation = GeoPoint(
+                              result.latitude,
+                              result.longitude,
+                            );
+                            locationStatus =
+                                'Lokasi: ${selectedLocation!.latitude.toStringAsFixed(4)}, ${selectedLocation!.longitude.toStringAsFixed(4)}';
+                          });
                         }
-
-                        // Buka kembali dialog dengan lokasi terbaru
-                        _showTpsLocationDialog(currentData);
-                        // --- (AKHIR PERBAIKAN) ---
                       },
                       icon: const Icon(Icons.map_outlined),
                       label: const Text('Pilih Manual di Peta'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.secondary,
-                        foregroundColor: Theme.of(
-                          context,
-                        ).colorScheme.onSecondary,
+                        backgroundColor: _primaryEmerald,
+                        foregroundColor: _pureWhite,
                       ),
                     ),
                   ],
@@ -329,8 +368,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            'Anda harus mengambil lokasi GPS baru.',
+                            'Anda harus mengambil lokasi GPS atau memilih di peta.',
                           ),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                       return;
@@ -351,7 +391,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- (FUNGSI PENYIMPANAN) ---
   Future<void> _updateTpsLocation(String address, GeoPoint? location) async {
     if (user == null || location == null) return;
 
@@ -371,6 +410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SnackBar(
             content: Text('Lokasi TPS berhasil diperbarui!'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
     } catch (e) {
@@ -379,6 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(
             content: Text('Gagal update lokasi: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
     }
@@ -387,15 +428,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Pengguna tidak ditemukan.')),
+      return Scaffold(
+        backgroundColor: _background,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.person_off_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Pengguna tidak ditemukan',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
+      backgroundColor: _background,
       appBar: AppBar(
-        title: const Text('Profil Saya'),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        title: const Text(
+          'Profil Saya',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+        ),
+        backgroundColor: _pureWhite,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryEmerald, _tealAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _primaryEmerald.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+        ),
+        foregroundColor: _pureWhite,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
@@ -404,10 +489,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryEmerald),
+              ),
+            );
           }
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('Data pengguna tidak ditemukan.'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Data pengguna tidak ditemukan',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
 
           Map<String, dynamic> data =
@@ -417,223 +522,484 @@ class _ProfileScreenState extends State<ProfileScreen> {
           String email = data['email'] ?? 'Email Tidak Ada';
           String role = data['role'] ?? 'Peran Tidak Diketahui';
           int points = data['points'] ?? 0;
+          final timestamp = data['createdAt'] as Timestamp?;
+          final joinDate = timestamp != null
+              ? DateFormat('dd MMMM yyyy').format(timestamp.toDate())
+              : 'Tanggal tidak tersedia';
 
-          return ListView(
-            padding: const EdgeInsets.all(24.0),
-            children: [
-              // Info Profil
-              Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.grey[300],
-                      backgroundImage: (photoUrl != null)
-                          ? NetworkImage(photoUrl)
-                          : null,
-                      child: (photoUrl == null && !_isUploading)
-                          ? const Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.white,
-                            )
-                          : null,
-                    ),
-                    if (_isUploading)
-                      const Positioned.fill(child: CircularProgressIndicator()),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: IconButton.filled(
-                        onPressed: _isUploading ? null : _changeProfilePicture,
-                        icon: const Icon(Icons.camera_alt, size: 20),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                // Profile Header
+                Container(
+                  padding: const EdgeInsets.all(24.0),
+                  decoration: BoxDecoration(
+                    color: _pureWhite,
+                    borderRadius: BorderRadius.circular(20.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _primaryEmerald.withOpacity(0.3),
+                                width: 3,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: _isUploading
+                                  ? Center(
+                                      child: CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              _primaryEmerald,
+                                            ),
+                                      ),
+                                    )
+                                  : (photoUrl != null
+                                        ? Image.network(
+                                            photoUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  return Icon(
+                                                    Icons.person,
+                                                    size: 50,
+                                                    color: _primaryEmerald,
+                                                  );
+                                                },
+                                          )
+                                        : Icon(
+                                            Icons.person,
+                                            size: 50,
+                                            color: _primaryEmerald,
+                                          )),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _primaryEmerald,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _primaryEmerald.withOpacity(0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                onPressed: _isUploading
+                                    ? null
+                                    : _changeProfilePicture,
+                                icon: const Icon(
+                                  Icons.camera_alt,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: _primaryEmerald,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16.0),
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 20.0,
+                          fontWeight: FontWeight.w700,
+                          color: _darkEmerald,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4.0),
+                      Text(
+                        email,
+                        style: TextStyle(
+                          fontSize: 15.0,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8.0),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 6.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _ultraLightEmerald,
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(
+                            color: _primaryEmerald.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Text(
+                          role,
+                          style: TextStyle(
+                            fontSize: 12.0,
+                            color: _darkEmerald,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              Center(
-                child: Text(
-                  name,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 4.0),
-              Center(
-                child: Text(
-                  email,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 24.0),
-
-              // Poin (Masyarakat) atau Info Lokasi (TPS)
-              if (role == 'Masyarakat')
-                _buildPointsCard(context, points)
-              else
-                _buildTpsCard(context, data),
-
-              const SizedBox(height: 32.0),
-              const Divider(),
-              const SizedBox(height: 16.0),
-
-              // Tombol Aksi
-              if (role == 'Masyarakat')
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MyListingsScreen(),
+                      const SizedBox(height: 8.0),
+                      Text(
+                        'Bergabung sejak $joinDate',
+                        style: TextStyle(
+                          fontSize: 12.0,
+                          color: Colors.grey[500],
+                        ),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.storefront_outlined),
-                  label: const Text('Kelola Barang Jualan Saya'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    backgroundColor: Theme.of(context).colorScheme.tertiary,
-                    foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                    ],
                   ),
                 ),
-              if (role == 'Masyarakat') const SizedBox(height: 16.0),
-              ElevatedButton.icon(
-                onPressed:
-                    user!.providerData.any(
-                      (info) => info.providerId == 'password',
-                    )
-                    ? _changePassword
-                    : null,
-                icon: const Icon(Icons.lock_reset_outlined),
-                label: Text(
-                  user!.providerData.any(
-                        (info) => info.providerId == 'password',
-                      )
-                      ? 'Ganti Password'
-                      : 'Ganti Password (Nonaktif u/ Google)',
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                ),
-              ),
 
-              const SizedBox(height: 16.0),
-              OutlinedButton.icon(
-                onPressed: _performLogout,
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                  side: BorderSide(color: Theme.of(context).colorScheme.error),
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                const SizedBox(height: 20.0),
+
+                // Points Card (Masyarakat) atau TPS Card
+                if (role == 'Masyarakat')
+                  _buildPointsCard(context, points)
+                else
+                  _buildTpsCard(context, data),
+
+                const SizedBox(height: 20.0),
+
+                // Action Buttons
+                Container(
+                  padding: const EdgeInsets.all(20.0),
+                  decoration: BoxDecoration(
+                    color: _pureWhite,
+                    borderRadius: BorderRadius.circular(20.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      if (role == 'Masyarakat')
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryEmerald.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const MyListingsScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.storefront_outlined,
+                              size: 20,
+                            ),
+                            label: const Text('Kelola Barang Jualan Saya'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primaryEmerald,
+                              foregroundColor: _pureWhite,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16.0,
+                                horizontal: 16.0,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (role == 'Masyarakat') const SizedBox(height: 12.0),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              user!.providerData.any(
+                                (info) => info.providerId == 'password',
+                              )
+                              ? _changePassword
+                              : null,
+                          icon: const Icon(Icons.lock_reset_outlined, size: 20),
+                          label: Text(
+                            user!.providerData.any(
+                                  (info) => info.providerId == 'password',
+                                )
+                                ? 'Ganti Password'
+                                : 'Ganti Password (Nonaktif untuk Google)',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _pureWhite,
+                            foregroundColor: Colors.grey[700],
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16.0,
+                              horizontal: 16.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12.0),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.3),
+                          ),
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: _performLogout,
+                          icon: const Icon(Icons.logout, size: 20),
+                          label: const Text('Logout'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.withOpacity(0.05),
+                            foregroundColor: Colors.red,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 16.0,
+                              horizontal: 16.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  // Widget Poin (Masyarakat)
   Widget _buildPointsCard(BuildContext context, int points) {
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.star,
-              color: Theme.of(context).colorScheme.primary,
-              size: 30,
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: _pureWhite,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: _ultraLightEmerald,
+              borderRadius: BorderRadius.circular(12.0),
             ),
-            const SizedBox(width: 16.0),
-            Column(
+            child: Icon(Icons.star_rounded, color: _primaryEmerald, size: 32),
+          ),
+          const SizedBox(width: 16.0),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Poin SiBersih Anda:'),
+                Text(
+                  'Poin SiBersih Anda',
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4.0),
                 Text(
                   points.toString(),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(
+                    fontSize: 28.0,
+                    fontWeight: FontWeight.w700,
+                    color: _primaryEmerald,
                   ),
+                ),
+                Text(
+                  'Tukarkan poin Anda untuk mendapatkan manfaat',
+                  style: TextStyle(fontSize: 12.0, color: Colors.grey[500]),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // Widget Info Lokasi (TPS)
   Widget _buildTpsCard(BuildContext context, Map<String, dynamic> data) {
     String tpsAddress = data['tpsAddress'] ?? 'Alamat belum diatur';
     GeoPoint? tpsLocation = data['tpsLocation'];
     String locationString = 'Lokasi GPS belum diatur';
     if (tpsLocation != null) {
       locationString =
-          'Lat: ${tpsLocation.latitude.toStringAsFixed(4)}, Lon: ${tpsLocation.longitude.toStringAsFixed(4)}';
+          '${tpsLocation.latitude.toStringAsFixed(4)}, ${tpsLocation.longitude.toStringAsFixed(4)}';
     }
 
-    return Card(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.verified_user_outlined,
-                  color: Theme.of(context).colorScheme.onSecondaryContainer,
-                  size: 24,
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: _pureWhite,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: _ultraLightEmerald,
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
-                const SizedBox(width: 12.0),
-                Text(
-                  'Akun Petugas TPS Terverifikasi',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSecondaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Icon(
+                  Icons.verified_user_rounded,
+                  size: 20,
+                  color: _primaryEmerald,
+                ),
+              ),
+              const SizedBox(width: 12.0),
+              Text(
+                'Akun Petugas TPS Terverifikasi',
+                style: TextStyle(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w600,
+                  color: _darkEmerald,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16.0),
+          _buildInfoRow(
+            icon: Icons.store_mall_directory_outlined,
+            title: 'Alamat TPS',
+            value: tpsAddress,
+          ),
+          const SizedBox(height: 12.0),
+          _buildInfoRow(
+            icon: Icons.location_on_outlined,
+            title: 'Koordinat GPS',
+            value: locationString,
+          ),
+          const SizedBox(height: 16.0),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12.0),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryEmerald.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-            const Divider(height: 24.0),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.store_mall_directory_outlined,
-                color: Theme.of(context).colorScheme.onSecondaryContainer,
-              ),
-              title: Text(
-                tpsAddress,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(locationString),
-            ),
-            const SizedBox(height: 8.0),
-            ElevatedButton(
+            child: ElevatedButton(
               onPressed: () {
                 _showTpsLocationDialog(data);
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryEmerald,
+                foregroundColor: _pureWhite,
+                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+              ),
               child: const Text('Update Alamat & Lokasi TPS'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: _primaryEmerald),
+        const SizedBox(width: 12.0),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13.0,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2.0),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14.0,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
