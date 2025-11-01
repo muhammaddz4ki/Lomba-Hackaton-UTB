@@ -14,7 +14,8 @@ class TpsHomeScreen extends StatefulWidget {
 }
 
 class _TpsHomeScreenState extends State<TpsHomeScreen> {
-  int _selectedIndex = 0;
+  // SETEL INDEKS AWAL KE 2 (TpsIncomingScreen) agar menjadi layar default.
+  int _selectedIndex = 2;
 
   // SiBersih Color Palette
   static const Color _primaryEmerald = Color(0xFF10B981);
@@ -24,31 +25,28 @@ class _TpsHomeScreenState extends State<TpsHomeScreen> {
   static const Color _ultraLightEmerald = Color(0xFFECFDF5);
   static const Color _pureWhite = Color(0xFFFFFFFF);
   static const Color _background = Color(0xFFF8FDFD);
+  static const Color _urgentColor = Color(0xFFDC2626); // Tambahkan warna urgent
 
+  // DAFTAR LAYAR SESUAI URUTAN BOTTOM NAV BAR (tanpa index 2 yang dipisahkan)
+  // Urutan: 0:Dikerjakan, 1:Setoran, 2:Darurat, 3:Jadwal, 4:Rekap
   static const List<Widget> _widgetOptions = <Widget>[
     TpsInProgressScreen(),
     TpsDepositApprovalScreen(),
-    TpsIncomingScreen(),
+    TpsIncomingScreen(), // Index 2: Permintaan Darurat
     TpsScheduleManagementScreen(),
     TpsHistoryScreen(),
   ];
 
   void _onItemTapped(int index) {
-    if (index == 2) {
-      _openEmergencyScreen();
-    } else {
-      setState(() {
-        _selectedIndex = index;
-      });
-    }
+    // Navigasi yang diperbarui.
+    // Index 2 sekarang langsung masuk ke TpsIncomingScreen.
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
-  void _openEmergencyScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const TpsIncomingScreen()),
-    );
-  }
+  // Hapus _openEmergencyScreen karena sekarang ditangani oleh _onItemTapped
+  // void _openEmergencyScreen() { ... }
 
   String get _appBarTitle {
     switch (_selectedIndex) {
@@ -57,7 +55,7 @@ class _TpsHomeScreenState extends State<TpsHomeScreen> {
       case 1:
         return 'Setoran Bank Sampah';
       case 2:
-        return 'Permintaan Darurat';
+        return 'Permintaan Darurat'; // Judul untuk layar default yang baru
       case 3:
         return 'Kelola Jadwal Umum';
       case 4:
@@ -119,21 +117,20 @@ class _TpsHomeScreenState extends State<TpsHomeScreen> {
         ],
       ),
       body: Center(
-        child: _widgetOptions.elementAt(
-          (_selectedIndex == 2) ? 0 : _selectedIndex,
-        ),
+        // Cukup tampilkan widget pada _selectedIndex
+        child: _widgetOptions.elementAt(_selectedIndex),
       ),
       floatingActionButton: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.red.withOpacity(0.4),
+              color: _urgentColor.withOpacity(0.4), // Gunakan _urgentColor
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: Colors.red.withOpacity(0.3),
+              color: _urgentColor.withOpacity(0.3), // Gunakan _urgentColor
               blurRadius: 30,
               offset: const Offset(0, 12),
             ),
@@ -141,10 +138,11 @@ class _TpsHomeScreenState extends State<TpsHomeScreen> {
         ),
         child: FloatingActionButton(
           shape: const CircleBorder(),
-          onPressed: _openEmergencyScreen,
+          // Langsung ganti index ke 2 (Incoming/Darurat)
+          onPressed: () => _onItemTapped(2),
           tooltip: 'Permintaan Darurat',
           elevation: 0,
-          backgroundColor: Colors.red,
+          backgroundColor: _urgentColor, // Gunakan _urgentColor
           foregroundColor: _pureWhite,
           child: const Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -219,7 +217,16 @@ class _TpsHomeScreenState extends State<TpsHomeScreen> {
     required String label,
     required int index,
   }) {
+    // Periksa apakah item yang dipilih adalah Permintaan Darurat (index 2)
+    // Walaupun index 2 tidak ada di baris nav item utama, FAB akan mengarahkan ke sana.
+    // Kita cek jika _selectedIndex adalah 2, kita ingin FAB terlihat 'terpilih'.
     final bool isSelected = _selectedIndex == index;
+    final bool isFabSelected = _selectedIndex == 2 && index == 2;
+
+    // Untuk memastikan indikator terpilih berfungsi pada item Darurat (index 2)
+    // saat diklik via FAB, kita akan membuat item Darurat (index 2) secara implisit
+    // terwakili oleh FAB, tapi untuk BottomNavItem ini, kita tetap menggunakan
+    // index 0, 1, 3, 4. Kita tidak perlu membuat nav item untuk index 2 di sini.
 
     return Expanded(
       child: Material(
