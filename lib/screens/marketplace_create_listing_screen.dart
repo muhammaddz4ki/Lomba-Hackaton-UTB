@@ -6,6 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 
+// --- (BARU) Impor paket peta & halaman pemilih ---
+import 'package:latlong2/latlong.dart' as latlng;
+import 'location_picker_screen.dart';
+
 class MarketplaceCreateListingScreen extends StatefulWidget {
   const MarketplaceCreateListingScreen({super.key});
 
@@ -18,29 +22,26 @@ class _MarketplaceCreateListingScreenState
     extends State<MarketplaceCreateListingScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController(); // <-- BARU
+  final _priceController = TextEditingController();
 
-  // Variabel state
+  // Variabel state (sudah ada, kita hanya ganti nama _locationMessage)
   File? _imageFile;
   Position? _currentPosition;
-  String _locationMessage = 'Ambil Lokasi COD';
+  String _locationMessage = 'Lokasi COD belum diambil'; // Teks diubah
   bool _isLoading = false;
 
-  // Instance Firebase, Cloudinary, dll.
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ImagePicker _picker = ImagePicker();
   final CloudinaryPublic cloudinary = CloudinaryPublic(
-    'dofcteuvu', // Cloud Name-mu
-    'SiBersih', // Upload Preset-mu
+    'dofcteuvu',
+    'SiBersih',
     cache: false,
   );
 
-  // --- (Fungsi _getCurrentLocation, _pickImage, _showImagePickerOptions) ---
-  // --- (Ini sama persis seperti di report_screen.dart) ---
+  // --- (FUNGSI LOKASI BARU: _getCurrentLocation) ---
   Future<void> _getCurrentLocation() async {
     setState(() {
       _locationMessage = 'Sedang mengambil lokasi...';
@@ -59,14 +60,10 @@ class _MarketplaceCreateListingScreenState
       const LocationSettings locationSettings = LocationSettings(
         accuracy: LocationAccuracy.high,
       );
-      Position? position = await Geolocator.getPositionStream(
+      Position position = await Geolocator.getPositionStream(
         locationSettings: locationSettings,
       ).first;
-      setState(() {
-        _currentPosition = position;
-        _locationMessage =
-            'Lokasi COD berhasil diambil!\nLat: ${position.latitude.toStringAsFixed(4)}, Lon: ${position.longitude.toStringAsFixed(4)}';
-      });
+      _updateLocationState(position.latitude, position.longitude);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -74,11 +71,50 @@ class _MarketplaceCreateListingScreenState
         ).showSnackBar(SnackBar(content: Text('Gagal mengambil lokasi: $e')));
       }
       setState(() {
-        _locationMessage = 'Ambil Lokasi COD';
+        _locationMessage = 'Lokasi COD belum diambil';
       });
     }
   }
 
+  // --- (FUNGSI LOKASI BARU: _openLocationPicker) ---
+  Future<void> _openLocationPicker() async {
+    final latlng.LatLng initialLoc = _currentPosition != null
+        ? latlng.LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+        : const latlng.LatLng(-6.9175, 107.6191); // Default Bandung
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(initialLocation: initialLoc),
+      ),
+    );
+
+    if (result != null && result is latlng.LatLng) {
+      _updateLocationState(result.latitude, result.longitude);
+    }
+  }
+
+  // --- (FUNGSI LOKASI BARU: _updateLocationState) ---
+  void _updateLocationState(double latitude, double longitude) {
+    setState(() {
+      _currentPosition = Position(
+        latitude: latitude,
+        longitude: longitude,
+        timestamp: DateTime.now(),
+        accuracy: 10.0,
+        altitude: 0.0,
+        altitudeAccuracy: 0.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+      _locationMessage =
+          'Lokasi terpilih:\nLat: ${latitude.toStringAsFixed(4)}, Lon: ${longitude.toStringAsFixed(4)}';
+    });
+  }
+
+  // Fungsi _pickImage, _showImagePickerOptions, _uploadImage (Tidak Berubah)
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source);
@@ -125,9 +161,7 @@ class _MarketplaceCreateListingScreenState
       },
     );
   }
-  // --- (AKHIR FUNGSI COPY-PASTE) ---
 
-  // --- (Fungsi Upload ke Cloudinary) ---
   Future<String> _uploadImage(File image) async {
     try {
       CloudinaryFile file = CloudinaryFile.fromFile(
@@ -141,7 +175,7 @@ class _MarketplaceCreateListingScreenState
     }
   }
 
-  // --- (FUNGSI UTAMA: Kirim Listing) ---
+  // Fungsi _submitListing (Tidak Berubah, sudah pakai _currentPosition)
   Future<void> _submitListing() async {
     if (!_formKey.currentState!.validate()) return;
     if (_imageFile == null) {
@@ -156,38 +190,26 @@ class _MarketplaceCreateListingScreenState
       ).showSnackBar(const SnackBar(content: Text('Harap ambil lokasi COD.')));
       return;
     }
-
     setState(() => _isLoading = true);
-
     try {
       final User? user = _auth.currentUser;
       if (user == null) throw Exception('Anda harus login.');
-
-      // 1. Upload gambar dulu
       String imageUrl = await _uploadImage(_imageFile!);
-
-      // 2. Siapkan data untuk Firestore
       final data = {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'price':
-            double.tryParse(_priceController.text.trim()) ??
-            0.0, // Ubah ke angka
-        'status': 'Available', // Status awal
+        'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+        'status': 'Available',
         'sellerUid': user.uid,
-        'sellerEmail': user.email, // Kita simpan email penjual
+        'sellerEmail': user.email,
         'createdAt': Timestamp.now(),
-        'imageUrl': imageUrl, // Link Cloudinary
+        'imageUrl': imageUrl,
         'location': GeoPoint(
-          // Lokasi GPS
           _currentPosition!.latitude,
           _currentPosition!.longitude,
         ),
       };
-
-      // 3. Simpan ke koleksi BARU 'marketplace_listings'
       await _firestore.collection('marketplace_listings').add(data);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -195,7 +217,6 @@ class _MarketplaceCreateListingScreenState
             backgroundColor: Colors.green,
           ),
         );
-        // Kembali ke halaman sebelumnya
         Navigator.pop(context);
       }
     } catch (e) {
@@ -237,7 +258,7 @@ class _MarketplaceCreateListingScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Judul Barang
+                // (Field Judul, Harga, Deskripsi - tidak berubah)
                 TextFormField(
                   controller: _titleController,
                   decoration: const InputDecoration(
@@ -253,8 +274,6 @@ class _MarketplaceCreateListingScreenState
                   },
                 ),
                 const SizedBox(height: 20.0),
-
-                // 2. Harga
                 TextFormField(
                   controller: _priceController,
                   decoration: const InputDecoration(
@@ -263,7 +282,7 @@ class _MarketplaceCreateListingScreenState
                     border: OutlineInputBorder(),
                     prefixText: 'Rp ',
                   ),
-                  keyboardType: TextInputType.number, // Keyboard angka
+                  keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Harga tidak boleh kosong';
@@ -275,8 +294,6 @@ class _MarketplaceCreateListingScreenState
                   },
                 ),
                 const SizedBox(height: 20.0),
-
-                // 3. Deskripsi
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
@@ -294,7 +311,7 @@ class _MarketplaceCreateListingScreenState
                 ),
                 const SizedBox(height: 24.0),
 
-                // 4. Foto Barang
+                // Foto Barang (Tidak berubah)
                 GestureDetector(
                   onTap: _showImagePickerOptions,
                   child: Container(
@@ -322,13 +339,18 @@ class _MarketplaceCreateListingScreenState
                 ),
                 const SizedBox(height: 16.0),
 
-                // 5. Lokasi COD
+                // --- (WIDGET LOKASI DIPERBARUI) ---
+                Text(
+                  'Lokasi COD',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8.0),
                 OutlinedButton.icon(
                   onPressed: _getCurrentLocation,
-                  icon: const Icon(Icons.location_on_outlined),
+                  icon: const Icon(Icons.my_location),
                   label: Text(_locationMessage, textAlign: TextAlign.center),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    minimumSize: const Size(double.infinity, 50),
                     side: BorderSide(
                       color: _currentPosition != null
                           ? Colors.green
@@ -336,9 +358,22 @@ class _MarketplaceCreateListingScreenState
                     ),
                   ),
                 ),
+                const SizedBox(height: 8.0),
+                ElevatedButton.icon(
+                  onPressed: _openLocationPicker,
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Pilih Manual di Peta'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  ),
+                ),
+
+                // --- (AKHIR PERUBAHAN) ---
                 const SizedBox(height: 32.0),
 
-                // 6. Tombol Submit
+                // Tombol Submit (Tidak berubah)
                 ElevatedButton.icon(
                   onPressed: _isLoading ? null : _submitListing,
                   icon: _isLoading

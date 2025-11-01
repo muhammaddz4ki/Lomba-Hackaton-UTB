@@ -10,46 +10,63 @@ class TpsIncomingScreen extends StatefulWidget {
 }
 
 class _TpsIncomingScreenState extends State<TpsIncomingScreen> {
-  // Fungsi Untuk Menerima Permintaan
-  Future<void> _acceptRequest(String docId) async {
-    final tpsUser = FirebaseAuth.instance.currentUser;
-    if (tpsUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: Akun TPS Anda tidak terverifikasi.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String? _tpsUid = FirebaseAuth.instance.currentUser?.uid;
 
+  // --- (FUNGSI LAMA) Untuk Menerima Permintaan EMERGENSI ---
+  Future<void> _acceptEmergencyRequest(String docId) async {
+    if (_tpsUid == null) return;
     try {
-      // 1. Update dokumen di Firestore
-      await FirebaseFirestore.instance
+      await _firestore
           .collection('emergency_requests')
           .doc(docId)
           .update({
-            'status': 'On Progress', // Ubah status
-            'tpsId': tpsUser.uid, // Tetapkan TPS yang mengambil
-          });
+        'status': 'On Progress',
+        'tpsId': _tpsUid, // 'tpsId' adalah ID TPS yang MENERIMA
+      });
 
-      // 2. Tampilkan notifikasi sukses
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Permintaan diterima! Anda bisa mulai menjemput.'),
+            content: Text('Permintaan darurat diterima!'),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
-      // 3. Tampilkan notifikasi error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menerima permintaan: $e'),
-            backgroundColor: Colors.red,
+          SnackBar(content: Text('Gagal menerima permintaan: $e')),
+        );
+      }
+    }
+  }
+
+  // --- (FUNGSI BARU) Untuk Menerima Permintaan REGULER ---
+  Future<void> _acceptRegularRequest(String docId) async {
+    if (_tpsUid == null) return;
+    try {
+      // Pergi ke koleksi 'requests'
+      await _firestore
+          .collection('requests')
+          .doc(docId)
+          .update({
+        'status': 'On Progress',
+        'tpsId': _tpsUid, // 'tpsId' adalah ID TPS yang MENERIMA
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Permintaan reguler diterima!'),
+            backgroundColor: Colors.green,
           ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menerima permintaan: $e')),
         );
       }
     }
@@ -57,69 +74,124 @@ class _TpsIncomingScreenState extends State<TpsIncomingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_tpsUid == null) {
+      return const Center(child: Text('Harap login sebagai TPS.'));
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Permintaan Darurat Masuk'),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      // (Kita hapus AppBar dari sini, karena sudah ada di tps_home_screen.dart)
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- DAFTAR 1: PERMINTAAN DARURAT ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+            child: Text(
+              'Permintaan Darurat',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          Expanded(
+            child: _buildRequestList(
+              context: context,
+              collection: 'emergency_requests',
+              tpsUid: _tpsUid,
+              onAccept: _acceptEmergencyRequest,
+            ),
+          ),
+
+          const Divider(indent: 16.0, endIndent: 16.0),
+
+          // --- DAFTAR 2: PERMINTAAN REGULER ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+            child: Text(
+              'Permintaan Jemput Reguler',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          Expanded(
+            child: _buildRequestList(
+              context: context,
+              collection: 'requests',
+              tpsUid: _tpsUid,
+              onAccept: _acceptRegularRequest,
+            ),
+          ),
+        ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        // 1. Stream: Mendengarkan 'emergency_requests'
-        stream: FirebaseFirestore.instance
-            .collection('emergency_requests')
-            // 2. Filter: Hanya yang 'Pending'
-            .where('status', isEqualTo: 'Pending')
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
+    );
+  }
 
-        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Terjadi error: ${snapshot.error}'));
-          }
+  // --- (WIDGET HELPER BARU) Untuk membuat daftar ---
+  Widget _buildRequestList({
+    required BuildContext context,
+    required String collection,
+    required String tpsUid,
+    required Future<void> Function(String) onAccept,
+  }) {
+    return StreamBuilder<QuerySnapshot>(
+      // 1. Stream: Mendengarkan koleksi yang diberikan
+      stream: _firestore
+          .collection(collection)
+          // 2. Filter BARU:
+          //    HANYA tampilkan yang 'selectedTpsId'-nya
+          //    sama dengan ID TPS yang sedang login
+          .where('selectedTpsId', isEqualTo: tpsUid)
+          //    DAN statusnya masih 'Pending'
+          .where('status', isEqualTo: 'Pending')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+          
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Terjadi error: ${snapshot.error}'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Tidak ada permintaan masuk.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          );
+        }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        return ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          children: snapshot.data!.docs.map((DocumentSnapshot document) {
+            Map<String, dynamic> data =
+                document.data()! as Map<String, dynamic>;
+            String docId = document.id;
 
-          if (snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'Belum ada permintaan darurat.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+            // Ambil data (nama/deskripsi)
+            String title = data['description'] ?? data['name'] ?? 'Permintaan';
+            String subtitle = data['locationAddress'] ?? data['address'] ?? 'Alamat tidak ada';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 6.0),
+              child: ListTile(
+                isThreeLine: true,
+                title: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  'Pelapor: ${data['requesterEmail'] ?? data['name']}\nLokasi: $subtitle',
+                ),
+                trailing: ElevatedButton(
+                  onPressed: () {
+                    onAccept(docId); // Panggil fungsi "Terima" yang sesuai
+                  },
+                  child: const Text('Terima'),
+                ),
               ),
             );
-          }
-
-          // Tampilkan sebagai ListView
-          return ListView(
-            padding: const EdgeInsets.all(8.0),
-            children: snapshot.data!.docs.map((DocumentSnapshot document) {
-              Map<String, dynamic> data =
-                  document.data()! as Map<String, dynamic>;
-              String docId = document.id;
-
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
-                child: ListTile(
-                  isThreeLine: true,
-                  title: Text(
-                    data['description'],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    'Lokasi: ${data['locationAddress']}\nBiaya: Rp ${data['fee']}',
-                  ),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      _acceptRequest(docId);
-                    },
-                    child: const Text('Terima'),
-                  ),
-                ),
-              );
-            }).toList(),
-          );
-        },
-      ),
+          }).toList(),
+        );
+      },
     );
   }
 }

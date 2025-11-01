@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-
-// --- (BARU) Impor paket Cloud Firestore ---
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+// --- (DIUBAH) Menjadi StatefulWidget ---
 class RequestPickupScreen extends StatefulWidget {
   const RequestPickupScreen({super.key});
 
@@ -13,65 +13,106 @@ class RequestPickupScreen extends StatefulWidget {
 class _RequestPickupScreenState extends State<RequestPickupScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-
   String? _selectedWasteType;
-  final List<String> _wasteTypes = [
-    'Organik',
-    'Anorganik',
-    'B3 (Bahan Berbahaya)',
-  ];
+  final List<String> _wasteTypes = ['Organik', 'Anorganik', 'B3 (Bahan Berbahaya)'];
 
-  // --- (BARU) State untuk melacak proses loading ---
+  // --- (STATE BARU) ---
+  String? _selectedTpsId; // Untuk menyimpan ID TPS yang dipilih
+  List<DropdownMenuItem<String>> _tpsListItems = []; // Untuk daftar Dropdown
+  bool _isTpsLoading = true; // Untuk loading daftar TPS
+  // --------------------
+
   bool _isLoading = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // --- (BARU) Ubah fungsi _submitForm menjadi async ---
-  Future<void> _submitForm() async {
-    // Validasi formulir
-    if (_formKey.currentState!.validate()) {
-      // --- (BARU) Mulai loading ---
+  @override
+  void initState() {
+    super.initState();
+    // Panggil fungsi untuk mengambil daftar TPS saat halaman dibuka
+    _fetchTpsList();
+  }
+
+  // --- (FUNGSI BARU) Mengambil daftar TPS dari Firestore ---
+  Future<void> _fetchTpsList() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'TPS')
+          .get();
+
+      final tpsItems = snapshot.docs.map((doc) {
+        final data = doc.data();
+        final String tpsId = doc.id;
+        final String tpsName = data['name'] ?? 'TPS Tanpa Nama';
+        final String tpsAddress = data['tpsAddress'] ?? 'Alamat belum diatur';
+
+        return DropdownMenuItem<String>(
+          value: tpsId,
+          child: Text('$tpsName - ($tpsAddress)'),
+        );
+      }).toList();
+
       setState(() {
-        _isLoading = true;
+        _tpsListItems = tpsItems;
+        _isTpsLoading = false;
       });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat daftar TPS: $e')),
+        );
+      }
+      setState(() {
+        _isTpsLoading = false;
+      });
+    }
+  }
+
+  // --- (FUNGSI DIPERBARUI) Kirim permintaan ---
+  Future<void> _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      // (BARU) Validasi: Pastikan TPS sudah dipilih
+      if (_selectedTpsId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Harap pilih TPS tujuan.')),
+        );
+        return;
+      }
+      
+      setState(() => _isLoading = true);
 
       try {
-        // --- (BAGIAN INTI BARU) ---
-        // 1. Dapatkan referensi ke koleksi 'requests' di Firestore.
-        //    Jika 'requests' belum ada, Firestore akan membuatnya otomatis.
         final collection = FirebaseFirestore.instance.collection('requests');
 
-        // 2. Siapkan data yang akan dikirim
         final data = {
           'name': _nameController.text,
           'address': _addressController.text,
           'wasteType': _selectedWasteType,
           'notes': _notesController.text,
-          'status': 'Pending', // Kita tambahkan status awal
-          'createdAt':
-              FieldValue.serverTimestamp(), // Tambah stempel waktu server
+          'status': 'Pending', // Status awal
+          'createdAt': FieldValue.serverTimestamp(), 
+          'requesterUid': _auth.currentUser?.uid, // Simpan ID peminta
+          // --- (FIELD BARU) ---
+          'selectedTpsId': _selectedTpsId, // ID TPS yang dipilih
         };
 
-        // 3. Tambahkan (add) data ke koleksi
         await collection.add(data);
-
-        // --- (AKHIR BAGIAN INTI) ---
-
-        // Tampilkan notifikasi sukses
+        
         if (mounted) {
-          // Pastikan widget masih ada di tree
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Permintaan berhasil dikirim!'),
               backgroundColor: Colors.green,
             ),
           );
-          // Kembali ke halaman sebelumnya
           Navigator.pop(context);
         }
       } catch (e) {
-        // Jika terjadi error (misal: tidak ada internet)
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -81,11 +122,8 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
           );
         }
       } finally {
-        // --- (BARU) Hentikan loading, baik sukses maupun gagal ---
         if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+          setState(() => _isLoading = false);
         }
       }
     }
@@ -103,8 +141,8 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Formulir Permintaan Jemput'),
-        backgroundColor: Colors.blue[100],
+        title: const Text('Formulir Jemput Reguler'),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -114,14 +152,31 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // (Field Nama, Alamat, Dropdown, Catatan
-                //  tidak ada perubahan di sini, sama seperti sebelumnya)
-
-                // 1. Field Nama
-                const Text(
-                  'Nama Lengkap',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                // --- (WIDGET BARU: Pilihan TPS) ---
+                Text('Pilih TPS Tujuan', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8.0),
+                DropdownButtonFormField<String>(
+                  value: _selectedTpsId,
+                  hint: Text(
+                    _isTpsLoading ? 'Memuat daftar TPS...' : 'Pilih TPS Tujuan',
+                  ),
+                  isExpanded: true, 
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: _isTpsLoading ? null : (String? newValue) {
+                    setState(() {
+                      _selectedTpsId = newValue;
+                    });
+                  },
+                  items: _tpsListItems,
+                  validator: (value) => (value == null) ? 'Harap pilih TPS' : null,
                 ),
+                const SizedBox(height: 20.0),
+                // --------------------------------
+                
+                // (Field Nama, Alamat, dll. - tidak berubah)
+                const Text('Nama Lengkap', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _nameController,
@@ -136,13 +191,8 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 20.0), // Jarak
-                // 2. Field Alamat
-                const Text(
-                  'Alamat Lengkap',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                const SizedBox(height: 20.0), 
+                const Text('Alamat Lengkap', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _addressController,
@@ -150,7 +200,7 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
                     hintText: 'Masukkan alamat lengkap penjemputan',
                     border: OutlineInputBorder(),
                   ),
-                  maxLines: 3,
+                  maxLines: 3, 
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Alamat tidak boleh kosong';
@@ -158,13 +208,8 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
                     return null;
                   },
                 ),
-
-                const SizedBox(height: 20.0), // Jarak
-                // 3. Field Jenis Sampah (Dropdown)
-                const Text(
-                  'Jenis Sampah',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                const SizedBox(height: 20.0), 
+                const Text('Jenis Sampah', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8.0),
                 DropdownButtonFormField<String>(
                   value: _selectedWasteType,
@@ -190,13 +235,8 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
                     });
                   },
                 ),
-
-                const SizedBox(height: 20.0), // Jarak
-                // 4. Field Catatan (Opsional)
-                const Text(
-                  'Catatan (Opsional)',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                const SizedBox(height: 20.0), 
+                const Text('Catatan (Opsional)', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _notesController,
@@ -206,29 +246,20 @@ class _RequestPickupScreenState extends State<RequestPickupScreen> {
                   ),
                   maxLines: 2,
                 ),
+                const SizedBox(height: 32.0), 
 
-                const SizedBox(height: 32.0), // Jarak besar sebelum tombol
-                // 5. Tombol Submit (DIPERBARUI)
+                // Tombol Submit
                 SizedBox(
-                  width: double.infinity,
+                  width: double.infinity, 
                   child: ElevatedButton(
-                    // --- (BARU) ---
-                    // Jika _isLoading true, onPressed jadi null (tombol nonaktif)
-                    // Jika false, jalankan _submitForm
-                    onPressed: _isLoading ? null : _submitForm,
+                    onPressed: _isLoading ? null : _submitForm, 
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                       backgroundColor: Colors.blue[700],
                       foregroundColor: Colors.white,
                     ),
-                    // --- (BARU) Tampilkan teks 'Mengirim...' atau loading ---
                     child: _isLoading
-                        ? const CircularProgressIndicator(
-                            // Indikator putar
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          )
+                        ? const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white))
                         : const Text(
                             'Kirim Permintaan',
                             style: TextStyle(fontSize: 16.0),
