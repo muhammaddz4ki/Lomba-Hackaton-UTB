@@ -36,11 +36,11 @@ class _AppNavigationState extends State<AppNavigation> {
     return Scaffold(
       body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
 
-      // FAB dengan Gradient & Shadow
+      // FAB dengan Gradient & Shadow - POSISI DI TENGAH
       floatingActionButton: Container(
-        width: 60.0,
-        height: 60.0,
-        margin: const EdgeInsets.only(bottom: 5.0), // Reduced margin
+        width: 64.0, // Sedikit lebih besar untuk emphasis
+        height: 64.0,
+        margin: const EdgeInsets.only(bottom: 25.0), // Position dari bottom
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [
@@ -82,86 +82,104 @@ class _AppNavigationState extends State<AppNavigation> {
 
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // Bottom Navigation Bar dengan Enhanced Design
+      // Bottom Navigation Bar dengan Layout yang Diperbaiki
       bottomNavigationBar: Container(
-        height: 70.0, // Fixed height
+        height: 75.0, // Tinggi konsisten
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF10B981).withOpacity(0.1),
-              blurRadius: 20,
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 12,
               offset: const Offset(0, -4),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 6,
               offset: const Offset(0, -2),
             ),
           ],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
         ),
-        child: BottomAppBar(
-          color: Colors.transparent,
-          elevation: 0,
-          height: 70.0, // Match container height
-          padding: EdgeInsets.zero,
-          surfaceTintColor: Colors.transparent,
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 8.0, // Reduced notch margin
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 4.0,
-            ), // Reduced padding
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                // Tombol 1: Jadwal
-                _buildTabItem(
-                  icon: Icons.calendar_today_rounded,
-                  iconFilled: Icons.calendar_month_rounded,
-                  label: 'Jadwal',
-                  index: 1,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF14B8A6)],
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          child: BottomAppBar(
+            color: Colors.transparent,
+            elevation: 0,
+            height: 75.0,
+            padding: EdgeInsets.zero,
+            surfaceTintColor: Colors.transparent,
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 10.0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  // Bagian Kiri: 2 Item pertama
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildTabItem(
+                          icon: Icons.calendar_today_outlined,
+                          iconFilled: Icons.calendar_month_rounded,
+                          label: 'Jadwal',
+                          index: 1,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF14B8A6)],
+                          ),
+                        ),
+                        _buildTabItem(
+                          icon: Icons.report_problem_outlined,
+                          iconFilled: Icons.report_problem_rounded,
+                          label: 'Lapor',
+                          index: 2,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFEF5350), Color(0xFFE53935)],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                // Tombol 2: Lapor
-                _buildTabItem(
-                  icon: Icons.report_problem_outlined,
-                  iconFilled: Icons.report_problem_rounded,
-                  label: 'Lapor',
-                  index: 2,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEF5350), Color(0xFFE53935)],
+                  // Spacer untuk FAB - Lebar disesuaikan
+                  const SizedBox(width: 70.0),
+
+                  // Bagian Kanan: 2 Item terakhir
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildTabItem(
+                          icon: Icons.map_outlined,
+                          iconFilled: Icons.map_rounded,
+                          label: 'Peta',
+                          index: 3,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF9CCC65), Color(0xFF7CB342)],
+                          ),
+                        ),
+                        _buildTabItem(
+                          icon: Icons.person_outline_rounded,
+                          iconFilled: Icons.person_rounded,
+                          label: 'Profil',
+                          index: 4,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-
-                // Spacer untuk FAB - Lebih kecil
-                const SizedBox(width: 50.0),
-
-                // Tombol 3: Peta TPS
-                _buildTabItem(
-                  icon: Icons.map_outlined,
-                  iconFilled: Icons.map_rounded,
-                  label: 'Peta',
-                  index: 3,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF9CCC65), Color(0xFF7CB342)],
-                  ),
-                ),
-
-                // Tombol 4: Profil
-                _buildTabItem(
-                  icon: Icons.person_outline_rounded,
-                  iconFilled: Icons.person_rounded,
-                  label: 'Profil',
-                  index: 4,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF66BB6A), Color(0xFF4CAF50)],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -183,60 +201,55 @@ class _AppNavigationState extends State<AppNavigation> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _onItemTapped(index),
-          borderRadius: BorderRadius.circular(10.0),
+          borderRadius: BorderRadius.circular(12.0),
           splashColor: isSelected
               ? const Color(0xFF10B981).withOpacity(0.2)
               : Colors.grey.withOpacity(0.1),
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              vertical: 6.0,
-            ), // Reduced padding
-            margin: const EdgeInsets.symmetric(
-              horizontal: 2.0,
-            ), // Reduced margin
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            margin: const EdgeInsets.symmetric(horizontal: 4.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Icon Container dengan Gradient saat selected
+                // Icon dengan animasi smooth
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: EdgeInsets.all(
-                    isSelected ? 6.0 : 0.0,
-                  ), // Reduced padding
+                  duration: const Duration(milliseconds: 250),
+                  padding: EdgeInsets.all(isSelected ? 8.0 : 4.0),
                   decoration: isSelected
                       ? BoxDecoration(
                           gradient: gradient,
-                          borderRadius: BorderRadius.circular(
-                            10.0,
-                          ), // Reduced radius
+                          borderRadius: BorderRadius.circular(12.0),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF10B981).withOpacity(0.25),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                              color: const Color(0xFF10B981).withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         )
-                      : null,
+                      : BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
                   child: Icon(
                     isSelected ? iconFilled : icon,
                     color: isSelected ? Colors.white : Colors.grey.shade600,
-                    size: isSelected ? 22.0 : 20.0, // Reduced size
+                    size: isSelected ? 22.0 : 20.0,
                   ),
                 ),
-                const SizedBox(height: 3.0), // Reduced spacing
+                const SizedBox(height: 4.0),
                 // Label dengan animasi
                 AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 250),
                   style: TextStyle(
                     color: isSelected
                         ? const Color(0xFF047857) // Dark Emerald
                         : Colors.grey.shade600,
-                    fontSize: isSelected ? 10.0 : 9.0, // Reduced font size
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: isSelected ? 10.5 : 9.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     letterSpacing: isSelected ? 0.2 : 0.0,
-                    height: 1.1, // Reduced line height
+                    height: 1.1,
                   ),
                   textAlign: TextAlign.center,
                   child: Text(
