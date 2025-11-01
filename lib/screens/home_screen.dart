@@ -5,312 +5,567 @@ import 'emergency_request_screen.dart';
 import 'marketplace_screen.dart';
 import 'inbox_screen.dart';
 import 'waste_bank_screen.dart';
-// Impor profile screen tidak lagi dibutuhkan di sini
-// import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // --- (WIDGET BARU) Kartu "Jadwal Hari Ini" ---
+  // SiBersih Color Palette
+  static const Color _primaryEmerald = Color(0xFF10B981);
+  static const Color _darkEmerald = Color(0xFF047857);
+  static const Color _lightEmerald = Color(0xFF34D399);
+  static const Color _tealAccent = Color(0xFF14B8A6);
+  static const Color _ultraLightEmerald = Color(0xFFECFDF5);
+  static const Color _pureWhite = Color(0xFFFFFFFF);
+  static const Color _background = Color(0xFFF8FDFD);
+
   Widget _buildTodayScheduleCard(BuildContext context) {
-    // 1. Dapatkan nama hari ini dalam Bahasa Indonesia
     final String todayString = DateFormat(
       'EEEE',
       'id_ID',
     ).format(DateTime.now());
 
-    // 2. Buat StreamBuilder
     return StreamBuilder<QuerySnapshot>(
-      // 3. Query: Cari di 'public_schedules'
-      //    di mana array 'days' mengandung nama hari ini
       stream: FirebaseFirestore.instance
           .collection('public_schedules')
           .where('days', arrayContains: todayString)
           .snapshots(),
-
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // Tampilkan placeholder loading yang rapi
-          return Card(
-            elevation: 2.0,
-            color: Theme.of(context).colorScheme.surfaceVariant,
-            child: const SizedBox(
-              height: 70.0,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          );
+          return _buildSkeletonScheduleCard();
         }
+
         if (snapshot.hasError ||
             !snapshot.hasData ||
             snapshot.data!.docs.isEmpty) {
-          // Jika tidak ada jadwal hari ini, JANGAN TAMPILKAN APAPUN
-          return const SizedBox.shrink();
+          return _buildNoScheduleCard();
         }
 
-        // 4. Jika ADA jadwal, tampilkan kartunya
-        // (Kita ambil jadwal pertama saja sebagai notifikasi)
         Map<String, dynamic> data =
             snapshot.data!.docs[0].data() as Map<String, dynamic>;
+        return _buildActiveScheduleCard(data);
+      },
+    );
+  }
 
-        return Card(
-          elevation: 4.0,
-          color: Theme.of(context).colorScheme.primaryContainer,
+  Widget _buildSkeletonScheduleCard() {
+    return Container(
+      height: 100.0,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_primaryEmerald, _tealAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryEmerald.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoScheduleCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _pureWhite,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14.0),
+              decoration: BoxDecoration(
+                color: _ultraLightEmerald,
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Icon(
+                Icons.calendar_today_rounded,
+                size: 28,
+                color: _primaryEmerald,
+              ),
+            ),
+            const SizedBox(width: 16.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tidak Ada Jadwal Hari Ini',
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                      color: _darkEmerald,
+                    ),
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    'Tidak ada penjemputan terjadwal untuk hari ini',
+                    style: TextStyle(fontSize: 13.0, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveScheduleCard(Map<String, dynamic> data) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_primaryEmerald, _tealAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryEmerald.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20.0),
+          onTap: () {
+            // Navigate to schedule details
+          },
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Row(
               children: [
-                Icon(
-                  Icons.calendar_today,
-                  size: 40,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                Container(
+                  padding: const EdgeInsets.all(14.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 28,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 16.0),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Jadwal Jemput Hari Ini!',
+                      const Text(
+                        'Jadwal Jemput Hari Ini 🚛',
                         style: TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
+                          fontSize: 16.0,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       ),
+                      const SizedBox(height: 6.0),
                       Text(
-                        'Area: ${data['areaName']} (${data['timeStart']} - ${data['timeEnd']})',
+                        'Area: ${data['areaName']}',
                         style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
+                          fontSize: 14.0,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        '${data['timeStart']} - ${data['timeEnd']}',
+                        style: TextStyle(
+                          fontSize: 13.0,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
                     ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 6.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: Colors.white,
+                    size: 16,
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
-  // --- (AKHIR WIDGET BARU) ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _background,
       appBar: AppBar(
-        title: const Text('Dashboard'),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/Logo/LOGO SiBersih.png',
+              height: 32,
+              width: 32,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'SiBersih',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: _pureWhite,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryEmerald, _tealAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _primaryEmerald.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+        ),
+        foregroundColor: _pureWhite,
         actions: [
-          // Tombol Chat/Inbox (satu-satunya ikon di AppBar)
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            tooltip: 'Pesan Masuk',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const InboxScreen()),
-              );
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 12.0),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
+              tooltip: 'Pesan Masuk',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InboxScreen()),
+                );
+              },
+            ),
           ),
         ],
       ),
-
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         children: [
-          // Kartu Jadwal Hari Ini
-          _buildTodayScheduleCard(context),
-
-          // Kartu Emergensi
-          Card(
-            elevation: 4.0,
-            color: Theme.of(context).colorScheme.errorContainer,
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const EmergencyRequestScreen(),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.emergency_outlined,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Butuh Jemput Darurat?',
-                            style: TextStyle(
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onErrorContainer,
-                            ),
-                          ),
-                          Text(
-                            'Minta penjemputan sekarang (berbayar).',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onErrorContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Kartu Marketplace
-          Card(
-            elevation: 4.0,
-            color: Theme.of(context).colorScheme.tertiaryContainer,
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MarketplaceScreen(),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.storefront_outlined,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.onTertiaryContainer,
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Marketplace Sampah',
-                            style: TextStyle(
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onTertiaryContainer,
-                            ),
-                          ),
-                          Text(
-                            'Jual atau beli sampah daur ulang di sini.',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onTertiaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Kartu Bank Sampah
-          Card(
-            elevation: 4.0,
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WasteBankScreen(),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 40,
-                      color: Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Bank Sampah',
-                            style: TextStyle(
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                          Text(
-                            'Setor sampahmu dan dapatkan poin.',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
+          // Welcome Header dengan Logo
+          _buildWelcomeHeader(),
           const SizedBox(height: 24.0),
 
-          // Kartu Selamat Datang
-          Card(
-            elevation: 2.0,
+          // Jadwal Hari Ini
+          _buildTodayScheduleCard(context),
+          const SizedBox(height: 20.0),
+
+          // Menu Grid
+          _buildMenuGrid(context),
+          const SizedBox(height: 24.0),
+
+          // Info Card
+          _buildInfoCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: _pureWhite,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Logo SiBersih
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: _ultraLightEmerald,
+              borderRadius: BorderRadius.circular(16.0),
+              border: Border.all(
+                color: _primaryEmerald.withOpacity(0.2),
+                width: 2,
+              ),
+            ),
+            child: Image.asset(
+              'assets/Logo/LOGO SiBersih.png',
+              height: 40,
+              width: 40,
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(width: 16.0),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selamat Datang! 👋',
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.w700,
+                    color: _darkEmerald,
+                  ),
+                ),
+                const SizedBox(height: 4.0),
+                Text(
+                  'Mari bersama menjaga kebersihan lingkungan',
+                  style: TextStyle(fontSize: 14.0, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuGrid(BuildContext context) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 16.0,
+      mainAxisSpacing: 16.0,
+      childAspectRatio: 0.85,
+      children: [
+        _buildMenuCard(
+          title: 'Jemput Darurat',
+          subtitle: 'Butuh jemput sekarang',
+          icon: Icons.emergency_rounded,
+          gradientColors: const [Color(0xFFEF5350), Color(0xFFE53935)],
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const EmergencyRequestScreen(),
+              ),
+            );
+          },
+        ),
+        _buildMenuCard(
+          title: 'Marketplace',
+          subtitle: 'Jual/beli sampah',
+          icon: Icons.storefront_rounded,
+          gradientColors: const [Color(0xFF9CCC65), Color(0xFF7CB342)],
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MarketplaceScreen(),
+              ),
+            );
+          },
+        ),
+        _buildMenuCard(
+          title: 'Bank Sampah',
+          subtitle: 'Setor & dapat poin',
+          icon: Icons.account_balance_wallet_rounded,
+          gradientColors: const [Color(0xFF66BB6A), Color(0xFF4CAF50)],
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const WasteBankScreen()),
+            );
+          },
+        ),
+        _buildMenuCard(
+          title: 'Pesan',
+          subtitle: 'Lihat percakapan',
+          icon: Icons.chat_bubble_rounded,
+          gradientColors: const [Color(0xFFBA68C8), Color(0xFF9C27B0)],
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const InboxScreen()),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<Color> gradientColors,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withOpacity(0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20.0),
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20.0),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Selamat Datang di SiBersih!',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  Container(
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(14.0),
+                    ),
+                    child: Icon(icon, size: 28, color: Colors.white),
                   ),
-                  const SizedBox(height: 8.0),
-                  const Text(
-                    'Aplikasi ini membantumu mengelola sampah dan belajar lebih banyak tentang lingkungan.',
+                  const SizedBox(height: 16.0),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12.0,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: _pureWhite,
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6.0),
+                decoration: BoxDecoration(
+                  color: _ultraLightEmerald,
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: Image.asset(
+                  'assets/Logo/LOGO SiBersih.png',
+                  height: 20,
+                  width: 20,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              Text(
+                'Tentang SiBersih',
+                style: TextStyle(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w600,
+                  color: _darkEmerald,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          Text(
+            'Aplikasi SiBersih membantu Anda mengelola sampah dengan lebih efisien. '
+            'Dapatkan poin dari setiap sampah yang disetor dan jaga lingkungan tetap bersih! 🌱',
+            style: TextStyle(
+              fontSize: 14.0,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
+            textAlign: TextAlign.start,
           ),
         ],
       ),

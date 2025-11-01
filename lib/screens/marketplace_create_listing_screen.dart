@@ -5,8 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
-
-// --- (BARU) Impor paket peta & halaman pemilih ---
 import 'package:latlong2/latlong.dart' as latlng;
 import 'location_picker_screen.dart';
 
@@ -21,15 +19,13 @@ class MarketplaceCreateListingScreen extends StatefulWidget {
 class _MarketplaceCreateListingScreenState
     extends State<MarketplaceCreateListingScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
 
-  // Variabel state (sudah ada, kita hanya ganti nama _locationMessage)
   File? _imageFile;
   Position? _currentPosition;
-  String _locationMessage = 'Lokasi COD belum diambil'; // Teks diubah
+  String _locationMessage = 'Lokasi COD belum diambil';
   bool _isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -41,7 +37,15 @@ class _MarketplaceCreateListingScreenState
     cache: false,
   );
 
-  // --- (FUNGSI LOKASI BARU: _getCurrentLocation) ---
+  // SiBersih Color Palette
+  final Color _primaryEmerald = const Color(0xFF10B981);
+  final Color _darkEmerald = const Color(0xFF047857);
+  final Color _lightEmerald = const Color(0xFF34D399);
+  final Color _tealAccent = const Color(0xFF14B8A6);
+  final Color _ultraLightEmerald = const Color(0xFFECFDF5);
+  final Color _pureWhite = const Color(0xFFFFFFFF);
+  final Color _background = const Color(0xFFF8FDFD);
+
   Future<void> _getCurrentLocation() async {
     setState(() {
       _locationMessage = 'Sedang mengambil lokasi...';
@@ -66,9 +70,13 @@ class _MarketplaceCreateListingScreenState
       _updateLocationState(position.latitude, position.longitude);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal mengambil lokasi: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengambil lokasi: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
       setState(() {
         _locationMessage = 'Lokasi COD belum diambil';
@@ -76,11 +84,10 @@ class _MarketplaceCreateListingScreenState
     }
   }
 
-  // --- (FUNGSI LOKASI BARU: _openLocationPicker) ---
   Future<void> _openLocationPicker() async {
     final latlng.LatLng initialLoc = _currentPosition != null
         ? latlng.LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
-        : const latlng.LatLng(-6.9175, 107.6191); // Default Bandung
+        : const latlng.LatLng(-6.9175, 107.6191);
 
     final result = await Navigator.push(
       context,
@@ -94,7 +101,6 @@ class _MarketplaceCreateListingScreenState
     }
   }
 
-  // --- (FUNGSI LOKASI BARU: _updateLocationState) ---
   void _updateLocationState(double latitude, double longitude) {
     setState(() {
       _currentPosition = Position(
@@ -110,11 +116,10 @@ class _MarketplaceCreateListingScreenState
         speedAccuracy: 0.0,
       );
       _locationMessage =
-          'Lokasi terpilih:\nLat: ${latitude.toStringAsFixed(4)}, Lon: ${longitude.toStringAsFixed(4)}';
+          'Lokasi terpilih:\n${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
     });
   }
 
-  // Fungsi _pickImage, _showImagePickerOptions, _uploadImage (Tidak Berubah)
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source);
@@ -125,9 +130,13 @@ class _MarketplaceCreateListingScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal mengambil gambar: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengambil gambar: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -135,26 +144,69 @@ class _MarketplaceCreateListingScreenState
   void _showImagePickerOptions() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: _pureWhite,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
       builder: (context) {
         return SafeArea(
-          child: Wrap(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  'Pilih Foto Barang',
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.w600,
+                    color: _darkEmerald,
+                  ),
+                ),
+              ),
               ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Pilih dari Galeri'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: _ultraLightEmerald,
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Icon(Icons.photo_library, color: _primaryEmerald),
+                ),
+                title: Text(
+                  'Pilih dari Galeri',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[800],
+                  ),
+                ),
                 onTap: () {
                   _pickImage(ImageSource.gallery);
                   Navigator.of(context).pop();
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Ambil Foto (Kamera)'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: _ultraLightEmerald,
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Icon(Icons.photo_camera, color: _primaryEmerald),
+                ),
+                title: Text(
+                  'Ambil Foto (Kamera)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[800],
+                  ),
+                ),
                 onTap: () {
                   _pickImage(ImageSource.camera);
                   Navigator.of(context).pop();
                 },
               ),
+              const SizedBox(height: 16.0),
             ],
           ),
         );
@@ -175,19 +227,24 @@ class _MarketplaceCreateListingScreenState
     }
   }
 
-  // Fungsi _submitListing (Tidak Berubah, sudah pakai _currentPosition)
   Future<void> _submitListing() async {
     if (!_formKey.currentState!.validate()) return;
     if (_imageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Harap masukkan foto barang.')),
+        const SnackBar(
+          content: Text('Harap masukkan foto barang.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
     if (_currentPosition == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Harap ambil lokasi COD.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap ambil lokasi COD.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -215,6 +272,7 @@ class _MarketplaceCreateListingScreenState
           const SnackBar(
             content: Text('Barang berhasil di-posting!'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.pop(context);
@@ -225,6 +283,7 @@ class _MarketplaceCreateListingScreenState
           SnackBar(
             content: Text('Gagal mem-posting barang: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -246,159 +305,450 @@ class _MarketplaceCreateListingScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _background,
       appBar: AppBar(
-        title: const Text('Jual Barang Daur Ulang'),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        title: const Text(
+          'Jual Barang Daur Ulang',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+        ),
+        backgroundColor: _pureWhite,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryEmerald, _tealAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _primaryEmerald.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+        ),
+        foregroundColor: _pureWhite,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header Section
+              _buildHeaderSection(),
+              const SizedBox(height: 24.0),
+
+              // Form Fields
+              _buildTextField(
+                controller: _titleController,
+                label: 'Nama Barang',
+                hintText: 'Misal: Botol plastik Aqua 1 karung',
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama barang tidak boleh kosong';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16.0),
+
+              _buildTextField(
+                controller: _priceController,
+                label: 'Harga (Rp)',
+                hintText: 'Misal: 15000',
+                prefixText: 'Rp ',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Harga tidak boleh kosong';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Masukkan angka yang valid';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16.0),
+
+              _buildTextField(
+                controller: _descriptionController,
+                label: 'Deskripsi Barang',
+                hintText: 'Jelaskan kondisi, jumlah, jenis sampah, dll.',
+                maxLines: 4,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Deskripsi tidak boleh kosong';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24.0),
+
+              // Foto Barang Section
+              _buildImageSection(),
+              const SizedBox(height: 24.0),
+
+              // Lokasi Section
+              _buildLocationSection(),
+              const SizedBox(height: 32.0),
+
+              // Submit Button
+              _buildSubmitButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: _pureWhite,
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
         children: [
-          Form(
-            key: _formKey,
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: _ultraLightEmerald,
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: Icon(
+              Icons.storefront_rounded,
+              size: 28,
+              color: _primaryEmerald,
+            ),
+          ),
+          const SizedBox(width: 12.0),
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // (Field Judul, Harga, Deskripsi - tidak berubah)
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Barang',
-                    hintText: 'Misal: Botol plastik Aqua 1 karung',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nama barang tidak boleh kosong';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20.0),
-                TextFormField(
-                  controller: _priceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Harga (Rp)',
-                    hintText: 'Misal: 15000',
-                    border: OutlineInputBorder(),
-                    prefixText: 'Rp ',
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Harga tidak boleh kosong';
-                    }
-                    if (double.tryParse(value) == null) {
-                      return 'Masukkan angka yang valid';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20.0),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Deskripsi Barang',
-                    hintText: 'Jelaskan kondisi, jumlah, dll.',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 4,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Deskripsi tidak boleh kosong';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24.0),
-
-                // Foto Barang (Tidak berubah)
-                GestureDetector(
-                  onTap: _showImagePickerOptions,
-                  child: Container(
-                    height: 150,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: _imageFile != null
-                            ? Colors.green
-                            : Theme.of(context).colorScheme.outline,
-                      ),
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: _imageFile != null
-                        ? Image.file(_imageFile!, fit: BoxFit.cover)
-                        : const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_a_photo_outlined),
-                              SizedBox(height: 8.0),
-                              Text('Upload Foto Barang'),
-                            ],
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-
-                // --- (WIDGET LOKASI DIPERBARUI) ---
                 Text(
-                  'Lokasi COD',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8.0),
-                OutlinedButton.icon(
-                  onPressed: _getCurrentLocation,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(_locationMessage, textAlign: TextAlign.center),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    side: BorderSide(
-                      color: _currentPosition != null
-                          ? Colors.green
-                          : Theme.of(context).colorScheme.outline,
-                    ),
+                  'Jual Barang Daur Ulang',
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w600,
+                    color: _darkEmerald,
                   ),
                 ),
-                const SizedBox(height: 8.0),
-                ElevatedButton.icon(
-                  onPressed: _openLocationPicker,
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Pilih Manual di Peta'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                  ),
-                ),
-
-                // --- (AKHIR PERUBAHAN) ---
-                const SizedBox(height: 32.0),
-
-                // Tombol Submit (Tidak berubah)
-                ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _submitListing,
-                  icon: _isLoading
-                      ? const SizedBox.shrink()
-                      : const Icon(Icons.check_circle_outline),
-                  label: _isLoading
-                      ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Posting Barang',
-                          style: TextStyle(fontSize: 16.0),
-                        ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  ),
+                const SizedBox(height: 4.0),
+                Text(
+                  'Isi informasi barang dengan lengkap',
+                  style: TextStyle(fontSize: 13.0, color: Colors.grey[600]),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String? Function(String?) validator,
+    String? hintText,
+    String? prefixText,
+    TextInputType? keyboardType,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14.0,
+            fontWeight: FontWeight.w600,
+            color: _darkEmerald,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            prefixText: prefixText,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide(color: Colors.grey[400]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide(color: Colors.grey[400]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide(color: _primaryEmerald, width: 2.0),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: const BorderSide(color: Colors.red, width: 2.0),
+            ),
+            filled: true,
+            fillColor: _pureWhite,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 14.0,
+            ),
+          ),
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          validator: validator,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Foto Barang',
+          style: TextStyle(
+            fontSize: 14.0,
+            fontWeight: FontWeight.w600,
+            color: _darkEmerald,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        GestureDetector(
+          onTap: _showImagePickerOptions,
+          child: Container(
+            height: 160,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: _pureWhite,
+              borderRadius: BorderRadius.circular(16.0),
+              border: Border.all(
+                color: _imageFile != null ? _primaryEmerald : Colors.grey[300]!,
+                width: _imageFile != null ? 2.0 : 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: _imageFile != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16.0),
+                    child: Image.file(_imageFile!, fit: BoxFit.cover),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_photo_alternate_outlined,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 8.0),
+                      Text(
+                        'Upload Foto Barang',
+                        style: TextStyle(
+                          fontSize: 14.0,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4.0),
+                      Text(
+                        'Ketuk untuk memilih foto',
+                        style: TextStyle(
+                          fontSize: 12.0,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Lokasi COD',
+          style: TextStyle(
+            fontSize: 14.0,
+            fontWeight: FontWeight.w600,
+            color: _darkEmerald,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        Text(
+          'Tentukan lokasi bertemu untuk transaksi',
+          style: TextStyle(fontSize: 12.0, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 12.0),
+
+        // Current Location Button
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: OutlinedButton.icon(
+            onPressed: _getCurrentLocation,
+            icon: Icon(
+              Icons.my_location,
+              color: _currentPosition != null
+                  ? _primaryEmerald
+                  : Colors.grey[600],
+            ),
+            label: Text(
+              _locationMessage,
+              style: TextStyle(
+                color: _currentPosition != null
+                    ? _darkEmerald
+                    : Colors.grey[600],
+                fontWeight: _currentPosition != null
+                    ? FontWeight.w500
+                    : FontWeight.normal,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              side: BorderSide(
+                color: _currentPosition != null
+                    ? _primaryEmerald
+                    : Colors.grey[400]!,
+                width: _currentPosition != null ? 1.5 : 1.0,
+              ),
+              backgroundColor: _pureWhite,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12.0),
+
+        // Map Picker Button
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: _primaryEmerald.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed: _openLocationPicker,
+            icon: const Icon(Icons.map_outlined, size: 20),
+            label: const Text(
+              'Pilih Manual di Peta',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              backgroundColor: _primaryEmerald,
+              foregroundColor: _pureWhite,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryEmerald.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submitListing,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _primaryEmerald,
+          foregroundColor: _pureWhite,
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          elevation: 0,
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_outline, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Posting Barang',
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

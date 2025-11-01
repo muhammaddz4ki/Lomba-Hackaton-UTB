@@ -22,6 +22,14 @@ class _AuthScreenState extends State<AuthScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Emerald-Teal Color Palette
+  final Color _primaryColor = const Color(0xFF10B981); // Emerald-500
+  final Color _secondaryColor = const Color(0xFF14B8A6); // Teal-500
+  final Color _darkColor = const Color(0xFF047857); // Emerald-700
+  final Color _lightColor = const Color(0xFFD1FAE5); // Emerald-100
+  final Color _ultraLightColor = const Color(0xFFECFDF5); // Emerald-50
+  final Color _backgroundColor = Colors.white;
+
   Future<void> _submitForm() async {
     final isValid = _formKey.currentState!.validate();
     if (!isValid) return;
@@ -50,7 +58,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 'role': _selectedRole,
                 'createdAt': Timestamp.now(),
                 'points': 0,
-                'photoUrl': null, // <-- (PERUBAHAN 1: Tambah photoUrl null)
+                'photoUrl': null,
               });
         }
       }
@@ -67,13 +75,21 @@ class _AuthScreenState extends State<AuthScreen> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -113,7 +129,6 @@ class _AuthScreenState extends State<AuthScreen> {
             'role': null,
             'createdAt': Timestamp.now(),
             'points': 0,
-            // <-- (PERUBAHAN 2: Ambil foto profil Google!)
             'photoUrl': userCredential.user!.photoURL,
           });
         }
@@ -124,6 +139,7 @@ class _AuthScreenState extends State<AuthScreen> {
           SnackBar(
             content: Text('Gagal login dengan Google: $e'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -142,144 +158,380 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Card(
-            elevation: 8.0,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset('assets/Logo/LOGO SiBersih.png', height: 100),
-                    const SizedBox(height: 20.0),
-                    Text(
-                      _isLogin ? 'Selamat Datang Kembali' : 'Buat Akun Baru',
-                      style: Theme.of(context).textTheme.headlineMedium,
+      backgroundColor: _backgroundColor,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [_ultraLightColor, _backgroundColor, _backgroundColor],
+            stops: const [0.0, 0.3, 1.0],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.0),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [_backgroundColor, _ultraLightColor],
+                  ),
+                  borderRadius: BorderRadius.circular(20.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryColor.withOpacity(0.1),
+                      blurRadius: 25,
+                      offset: const Offset(0, 10),
                     ),
-                    const SizedBox(height: 24.0),
-                    if (!_isLogin)
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Nama Lengkap',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.name,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Nama tidak boleh kosong';
-                          }
-                          return null;
-                        },
-                      ),
-                    if (!_isLogin) const SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || !value.contains('@')) {
-                          return 'Masukkan email yang valid';
-                        }
-                        return null;
-                      },
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 5),
                     ),
-                    const SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                      validator: (value) {
-                        if (value == null || value.length < 6) {
-                          return 'Password minimal 6 karakter';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    if (!_isLogin)
-                      DropdownButtonFormField<String>(
-                        value: _selectedRole,
-                        decoration: const InputDecoration(
-                          labelText: 'Saya mendaftar sebagai...',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _roles.map((String role) {
-                          return DropdownMenuItem<String>(
-                            value: role,
-                            child: Text(role),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedRole = newValue;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Pilih peran' : null,
-                      ),
-                    if (!_isLogin) const SizedBox(height: 24.0),
-                    if (_isLoading)
-                      const CircularProgressIndicator()
-                    else
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _submitForm,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onPrimary,
-                          ),
-                          child: Text(_isLogin ? 'Login' : 'Daftar'),
-                        ),
-                      ),
-                    const SizedBox(height: 12.0),
-                    if (!_isLoading)
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _signInWithGoogle,
-                          icon: const Icon(Icons.g_mobiledata),
-                          label: const Text('Masuk dengan Google'),
-                        ),
-                      ),
-                    const SizedBox(height: 12.0),
-                    if (!_isLoading)
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLogin = !_isLogin;
-                          });
-                        },
-                        child: Text(
-                          _isLogin
-                              ? 'Belum punya akun? Daftar di sini'
-                              : 'Sudah punya akun? Login',
-                        ),
-                      ),
                   ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(28.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Logo dengan container yang lebih menarik
+                        Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: _backgroundColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryColor.withOpacity(0.2),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Image.asset(
+                            'assets/Logo/LOGO SiBersih.png',
+                            height: 80,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 24.0),
+
+                        // Title dengan gradient
+                        ShaderMask(
+                          shaderCallback: (bounds) => LinearGradient(
+                            colors: [_primaryColor, _secondaryColor],
+                          ).createShader(bounds),
+                          child: Text(
+                            _isLogin
+                                ? 'Selamat Datang Kembali'
+                                : 'Buat Akun Baru',
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 8.0),
+                        Text(
+                          _isLogin
+                              ? 'Masuk ke akun Anda untuk melanjutkan'
+                              : 'Bergabunglah dengan komunitas SiBersih',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32.0),
+
+                        // Form Fields
+                        if (!_isLogin)
+                          _buildTextField(
+                            controller: _nameController,
+                            label: 'Nama Lengkap',
+                            icon: Icons.person_outline,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Nama tidak boleh kosong';
+                              }
+                              return null;
+                            },
+                          ),
+                        if (!_isLogin) const SizedBox(height: 16.0),
+
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'Email',
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || !value.contains('@')) {
+                              return 'Masukkan email yang valid';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+
+                        _buildTextField(
+                          controller: _passwordController,
+                          label: 'Password',
+                          icon: Icons.lock_outline,
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.length < 6) {
+                              return 'Password minimal 6 karakter';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+
+                        if (!_isLogin) _buildRoleDropdown(),
+                        if (!_isLogin) const SizedBox(height: 24.0),
+
+                        // Submit Button
+                        if (_isLoading)
+                          Container(
+                            padding: const EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                _primaryColor,
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12.0),
+                              gradient: LinearGradient(
+                                colors: [_primaryColor, _secondaryColor],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _primaryColor.withOpacity(0.4),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _submitForm,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16.0,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                              ),
+                              child: Text(
+                                _isLogin ? 'Masuk' : 'Daftar',
+                                style: const TextStyle(
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 20.0),
+
+                        // Divider
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: Colors.grey[300],
+                                thickness: 1,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              child: Text(
+                                'atau',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: Colors.grey[300],
+                                thickness: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20.0),
+
+                        // Google Sign In Button
+                        if (!_isLoading)
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12.0),
+                              border: Border.all(
+                                color: Colors.grey[300]!,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: OutlinedButton.icon(
+                              onPressed: _signInWithGoogle,
+                              icon: const Icon(Icons.g_mobiledata, size: 24),
+                              label: const Text(
+                                'Masuk dengan Google',
+                                style: TextStyle(
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14.0,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 24.0),
+
+                        // Toggle Login/Register
+                        if (!_isLoading)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _isLogin
+                                    ? 'Belum punya akun?'
+                                    : 'Sudah punya akun?',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              const SizedBox(width: 8.0),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isLogin = !_isLogin;
+                                  });
+                                },
+                                child: Text(
+                                  _isLogin ? 'Daftar di sini' : 'Login',
+                                  style: TextStyle(
+                                    color: _primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required String? Function(String?) validator,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[600]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Colors.grey[400]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Colors.grey[400]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: _primaryColor, width: 2.0),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: const BorderSide(color: Colors.red, width: 2.0),
+        ),
+        filled: true,
+        fillColor: _backgroundColor,
+        prefixIcon: Icon(icon, color: Colors.grey[500]),
+      ),
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      validator: validator,
+    );
+  }
+
+  Widget _buildRoleDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedRole,
+      decoration: InputDecoration(
+        labelText: 'Saya mendaftar sebagai...',
+        labelStyle: TextStyle(color: Colors.grey[600]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Colors.grey[400]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Colors.grey[400]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: _primaryColor, width: 2.0),
+        ),
+        filled: true,
+        fillColor: _backgroundColor,
+        prefixIcon: Icon(Icons.people_outline, color: Colors.grey[500]),
+      ),
+      items: _roles.map((String role) {
+        return DropdownMenuItem<String>(value: role, child: Text(role));
+      }).toList(),
+      onChanged: (String? newValue) {
+        setState(() {
+          _selectedRole = newValue;
+        });
+      },
+      validator: (value) => value == null ? 'Pilih peran' : null,
     );
   }
 }

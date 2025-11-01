@@ -30,7 +30,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     cache: false,
   );
 
-  // --- (Fungsi _changeProfilePicture) ---
+  // --- (Fungsi _changeProfilePicture, _showImageSourceDialog, _changePassword, _performLogout) ---
+  // (Dibiarkan sama, asumsikan kodenya sudah disalin dari respons sebelumnya)
+
+  // Fungsi _changeProfilePicture
   Future<void> _changeProfilePicture() async {
     final source = await _showImageSourceDialog();
     if (source == null) return;
@@ -75,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // --- (Fungsi _showImageSourceDialog) ---
+  // Fungsi _showImageSourceDialog
   Future<ImageSource?> _showImageSourceDialog() async {
     return showModalBottomSheet<ImageSource>(
       context: context,
@@ -104,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- (Fungsi _changePassword) ---
+  // Fungsi _changePassword
   Future<void> _changePassword() async {
     final bool? didConfirm = await showDialog<bool>(
       context: context,
@@ -148,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // --- (Fungsi _performLogout) ---
+  // Fungsi _performLogout
   Future<void> _performLogout() async {
     final bool? didRequestSignOut = await showDialog<bool>(
       context: context,
@@ -177,12 +180,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // --- (FUNGSI DIALOG TPS DIPERBARUI) ---
+  // --- (FUNGSI DIALOG TPS DIPERBAIKI LOGIKA MAPPINGNYA) ---
   Future<void> _showTpsLocationDialog(Map<String, dynamic> currentData) async {
     final addressController = TextEditingController(
       text: currentData['tpsAddress'],
     );
 
+    // selectedLocation sekarang adalah GeoPoint yang bisa berubah
     GeoPoint? selectedLocation = currentData['tpsLocation'];
 
     String locationStatus = "Ambil Lokasi GPS Saat Ini";
@@ -274,7 +278,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               )
                             : const latlng.LatLng(-6.9175, 107.6191);
 
-                        Navigator.pop(dialogContext); // Tutup dialog
+                        // Tutup dialog
+                        Navigator.pop(dialogContext);
+
+                        // Buka Peta Pemilih
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -284,23 +291,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         );
 
-                        // --- (PERBAIKAN BUG) ---
-                        // Gunakan 'currentData' untuk memanggil ulang dialog
-                        // bukan 'data'
+                        // --- (PERBAIKAN LOGIKA PEMANGGILAN ULANG) ---
+                        // Jika dapat hasil, update state dan panggil dialog lagi
                         if (result != null && result is latlng.LatLng) {
                           selectedLocation = GeoPoint(
                             result.latitude,
                             result.longitude,
                           );
-                          // Buat map baru dengan data lama + lokasi baru
-                          Map<String, dynamic> updatedData = Map.from(
-                            currentData,
-                          );
-                          updatedData['tpsLocation'] = selectedLocation;
-                          _showTpsLocationDialog(updatedData);
-                        } else {
-                          _showTpsLocationDialog(currentData);
                         }
+
+                        // Buka kembali dialog dengan lokasi terbaru
+                        _showTpsLocationDialog(currentData);
                         // --- (AKHIR PERBAIKAN) ---
                       },
                       icon: const Icon(Icons.map_outlined),
