@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "454043411099",
+    "project_id": "hackatonutb",
+    "storage_bucket": "hackatonutb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:454043411099:android:1a8f96b04152ad8c039c3e",
+        "android_client_info": {
+          "package_name": "com.example.eco_manage"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "454043411099-9630067vah0r9vsq9sql2q5lchtd1ot6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.eco_manage",
+            "certificate_hash": "1457f79cf9f65721fb18db3924d58449aa8ba408"
+          }
+        },
+        {
+          "client_id": "454043411099-oqlapcjabfmd4sfsfjbo2nr18l6qlc50.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxdEi1LRJJMTeB32X2A76LeI2RMzU-Nb8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "454043411099-oqlapcjabfmd4sfsfjbo2nr18l6qlc50.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "454043411099-jtbmn76oeocqpe118p46d1pfgd9qc84o.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.ecoManage"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
