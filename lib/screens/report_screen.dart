@@ -1,10 +1,12 @@
-import 'dart:io'; 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:latlong2/latlong.dart' as latlng;
+import 'location_picker_screen.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -15,43 +17,31 @@ class ReportScreen extends StatefulWidget {
 
 class _ReportScreenState extends State<ReportScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controllers
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-
-  // Variabel state
   String? _selectedReportType;
   final List<String> _reportTypes = [
     'Tumpukan Sampah Ilegal',
     'Fasilitas Rusak',
-    'Lainnya'
+    'Lainnya',
   ];
   File? _imageFile;
   Position? _currentPosition;
   String _locationMessage = 'Lokasi belum diambil';
   bool _isLoading = false;
-
-  // Instance Firebase
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Instance Cloudinary
+  final ImagePicker _picker = ImagePicker();
   final CloudinaryPublic cloudinary = CloudinaryPublic(
-    'dofcteuvu', // Cloud Name-mu
-    'SiBersih', // Upload Preset-mu
+    'dofcteuvu',
+    'SiBersih',
     cache: false,
   );
 
-  // Instance ImagePicker
-  final ImagePicker _picker = ImagePicker();
-
-  // --- (FUNGSI LOKASI DIPERBARUI) ---
   Future<void> _getCurrentLocation() async {
     setState(() {
       _locationMessage = 'Sedang mengambil lokasi...';
     });
-
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -60,31 +50,16 @@ class _ReportScreenState extends State<ReportScreen> {
           throw Exception('Izin lokasi ditolak.');
         }
       }
-
       if (permission == LocationPermission.deniedForever) {
-        throw Exception(
-          'Izin lokasi ditolak permanen. Harap aktifkan di pengaturan HP.',
-        );
+        throw Exception('Izin lokasi ditolak permanen.');
       }
-
-      // --- (PERBAIKAN) Menggunakan 'locationSettings' untuk API baru ---
-      // Ini menggantikan 'desiredAccuracy' yang deprecated
       const LocationSettings locationSettings = LocationSettings(
         accuracy: LocationAccuracy.high,
       );
-      
-      // Menggunakan .getPositionStream().first adalah cara modern
-      // untuk mendapatkan satu kali lokasi
-      Position? position = await Geolocator.getPositionStream(
+      Position position = await Geolocator.getPositionStream(
         locationSettings: locationSettings,
       ).first;
-      // --- (AKHIR PERBAIKAN) ---
-
-      setState(() {
-        _currentPosition = position;
-        _locationMessage =
-            'Lokasi berhasil diambil!\nLat: ${position.latitude.toStringAsFixed(4)}, Lon: ${position.longitude.toStringAsFixed(4)}';
-      });
+      _updateLocationState(position.latitude, position.longitude);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -97,7 +72,42 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
-  // --- (Fungsi _pickImage, _showImagePickerOptions - TIDAK BERUBAH) ---
+  Future<void> _openLocationPicker() async {
+    final latlng.LatLng initialLoc = _currentPosition != null
+        ? latlng.LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+        : const latlng.LatLng(-6.9175, 107.6191);
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(initialLocation: initialLoc),
+      ),
+    );
+
+    if (result != null && result is latlng.LatLng) {
+      _updateLocationState(result.latitude, result.longitude);
+    }
+  }
+
+  void _updateLocationState(double latitude, double longitude) {
+    setState(() {
+      _currentPosition = Position(
+        latitude: latitude,
+        longitude: longitude,
+        timestamp: DateTime.now(),
+        accuracy: 10.0,
+        altitude: 0.0,
+        altitudeAccuracy: 0.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+      _locationMessage =
+          'Lokasi terpilih:\nLat: ${latitude.toStringAsFixed(4)}, Lon: ${longitude.toStringAsFixed(4)}';
+    });
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source);
@@ -145,7 +155,6 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  // --- (Fungsi _uploadImage & _submitReport - TIDAK BERUBAH) ---
   Future<String> _uploadImage(File image) async {
     try {
       CloudinaryFile file = CloudinaryFile.fromFile(
@@ -159,6 +168,7 @@ class _ReportScreenState extends State<ReportScreen> {
     }
   }
 
+  // --- (FUNGSI _submitReport DIPERBARUI) ---
   Future<void> _submitReport() async {
     if (!_formKey.currentState!.validate()) return;
     if (_imageFile == null) {
@@ -178,12 +188,15 @@ class _ReportScreenState extends State<ReportScreen> {
       final User? user = _auth.currentUser;
       if (user == null) throw Exception('Anda harus login.');
       String imageUrl = await _uploadImage(_imageFile!);
+
+      // Siapkan data
       final data = {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'reportType': _selectedReportType,
         'status': 'Pending',
         'reporterUid': user.uid,
+        'reporterEmail': user.email, // <-- (PERUBAHAN DI SINI)
         'createdAt': Timestamp.now(),
         'imageUrl': imageUrl,
         'location': GeoPoint(
@@ -191,7 +204,10 @@ class _ReportScreenState extends State<ReportScreen> {
           _currentPosition!.longitude,
         ),
       };
+
+      // Simpan data
       await _firestore.collection('reports').add(data);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -242,13 +258,11 @@ class _ReportScreenState extends State<ReportScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // --- FORMULIR (DIMULAI DARI SINI) ---
           Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Judul
                 TextFormField(
                   controller: _titleController,
                   decoration: const InputDecoration(
@@ -256,7 +270,6 @@ class _ReportScreenState extends State<ReportScreen> {
                     hintText: 'Misal: Sampah di Depan Pasar',
                     border: OutlineInputBorder(),
                   ),
-                  // --- (PERBAIKAN VALIDATOR) ---
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Judul tidak boleh kosong';
@@ -265,28 +278,24 @@ class _ReportScreenState extends State<ReportScreen> {
                   },
                 ),
                 const SizedBox(height: 20.0),
-
-                // 2. Tipe
                 DropdownButtonFormField<String>(
                   value: _selectedReportType,
+                  hint: const Text('Pilih Tipe Laporan'),
                   decoration: const InputDecoration(
                     labelText: 'Tipe Laporan',
                     border: OutlineInputBorder(),
                   ),
-                  // --- (PERBAIKAN 'items') ---
                   items: _reportTypes.map((String type) {
                     return DropdownMenuItem<String>(
                       value: type,
                       child: Text(type),
                     );
                   }).toList(),
-                  // --- (PERBAIKAN 'onChanged') ---
                   onChanged: (String? newValue) {
                     setState(() {
                       _selectedReportType = newValue;
                     });
                   },
-                  // --- (PERBAIKAN VALIDATOR) ---
                   validator: (value) {
                     if (value == null) {
                       return 'Harap pilih tipe laporan';
@@ -295,8 +304,6 @@ class _ReportScreenState extends State<ReportScreen> {
                   },
                 ),
                 const SizedBox(height: 20.0),
-
-                // 3. Deskripsi
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
@@ -305,7 +312,6 @@ class _ReportScreenState extends State<ReportScreen> {
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 4,
-                  // --- (PERBAIKAN VALIDATOR) ---
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Deskripsi tidak boleh kosong';
@@ -314,30 +320,48 @@ class _ReportScreenState extends State<ReportScreen> {
                   },
                 ),
                 const SizedBox(height: 24.0),
-
-                // 4. Lokasi
-                OutlinedButton.icon(
-                  onPressed: _getCurrentLocation,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(_locationMessage, textAlign: TextAlign.center),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    side: BorderSide(
-                      color: _currentPosition != null
-                          ? Colors.green
-                          : Theme.of(context).colorScheme.outline,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _getCurrentLocation,
+                      icon: const Icon(Icons.my_location),
+                      label: Text(
+                        _locationMessage,
+                        textAlign: TextAlign.center,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        side: BorderSide(
+                          color: _currentPosition != null
+                              ? Colors.green
+                              : Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 8.0),
+                    ElevatedButton.icon(
+                      onPressed: _openLocationPicker,
+                      icon: const Icon(Icons.map_outlined),
+                      label: const Text('Pilih Lokasi di Peta'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.secondary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onSecondary,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16.0),
-
-                // 5. Gambar
                 GestureDetector(
                   onTap: _showImagePickerOptions,
                   child: Container(
                     height: 150,
                     width: double.infinity,
-                    // --- (PERBAIKAN 'decoration') ---
                     decoration: BoxDecoration(
                       border: Border.all(
                         color: _imageFile != null
@@ -359,8 +383,6 @@ class _ReportScreenState extends State<ReportScreen> {
                   ),
                 ),
                 const SizedBox(height: 32.0),
-
-                // 6. Tombol Submit
                 ElevatedButton.icon(
                   onPressed: _isLoading ? null : _submitReport,
                   icon: _isLoading
@@ -385,9 +407,8 @@ class _ReportScreenState extends State<ReportScreen> {
               ],
             ),
           ),
-          // --- FORMULIR (SELESAI DI SINI) ---
 
-          // --- (BAGIAN RIWAYAT - TIDAK BERUBAH) ---
+          // --- Bagian Riwayat (Tidak berubah) ---
           const SizedBox(height: 32.0),
           const Divider(),
           const SizedBox(height: 16.0),
